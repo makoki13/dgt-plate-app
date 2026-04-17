@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'services/plate_service.dart';
 
 void main() {
   runApp(const DgtPlateApp());
@@ -37,6 +38,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final _plateService = PlateService();
   String? _plate;
   DateTime? _lastUpdated;
   bool _isLoading = false;
@@ -48,7 +50,6 @@ class _HomePageState extends State<HomePage> {
     _fetchPlate();
   }
 
-  // TODO: En el siguiente paso, esto se reemplazará por una llamada real a tu servicio/API
   Future<void> _fetchPlate() async {
     setState(() {
       _isLoading = true;
@@ -56,22 +57,28 @@ class _HomePageState extends State<HomePage> {
     });
 
     try {
-      // Simulamos latencia de red y respuesta del servidor
-      await Future.delayed(const Duration(seconds: 2));
-      
-      // Mock con formato DGT válido: XXXX LLL
-      final mockPlate = "4821 KLM";
-      
-      setState(() {
-        _plate = mockPlate;
-        _lastUpdated = DateTime.now();
-        _isLoading = false;
-      });
+      final result = await _plateService.fetchLatestPlate();
+      if (mounted) {
+        setState(() {
+          _plate = result.plate;
+          _lastUpdated = result.updatedAt;
+          _isLoading = false;
+        });
+      }
+    } on PlateException catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _error = 'No se pudo conectar con el servicio';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = 'Error inesperado: ${e.toString()}';
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -132,7 +139,6 @@ class _HomePageState extends State<HomePage> {
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Tarjeta estilo matrícula europea
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
                         decoration: BoxDecoration(
