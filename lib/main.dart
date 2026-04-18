@@ -1,7 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:workmanager/workmanager.dart';
 import 'services/plate_service.dart';
+import 'services/update_scheduler.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Inicializa WorkManager con el callback de fondo
+  Workmanager().initialize(
+    callbackDispatcher,
+    isInDebugMode: true, // 🔍 Cambiar a false cuando publiques
+  );
+
+  // Programa la sync diaria a las 16:00
+  await UpdateScheduler.initialize();
+
   runApp(const DgtPlateApp());
 }
 
@@ -39,6 +52,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _plateService = PlateService();
+  PlateResult? _plateResult;
   String? _plate;
   DateTime? _lastUpdated;
   bool _isLoading = false;
@@ -60,7 +74,8 @@ class _HomePageState extends State<HomePage> {
       final result = await _plateService.fetchLatestPlate();
       if (mounted) {
         setState(() {
-          _plate = result.plate;
+          _plateResult = result;
+          _plate = result.plateText;
           _lastUpdated = result.updatedAt;
           _isLoading = false;
         });
@@ -84,9 +99,38 @@ class _HomePageState extends State<HomePage> {
 
   String _formatDate(DateTime dt) {
     return '${dt.day.toString().padLeft(2, '0')}/'
-           '${dt.month.toString().padLeft(2, '0')}/'
-           '${dt.year} ${dt.hour.toString().padLeft(2, '0')}:'
-           '${dt.minute.toString().padLeft(2, '0')}';
+        '${dt.month.toString().padLeft(2, '0')}/'
+        '${dt.year} ${dt.hour.toString().padLeft(2, '0')}:'
+        '${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  Widget _buildTextPlate() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey[900]
+            : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade300, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Text(
+        _plate ?? '???? ???',
+        style: const TextStyle(
+          fontSize: 48,
+          fontWeight: FontWeight.bold,
+          fontFamily: 'monospace',
+          letterSpacing: 2,
+        ),
+      ),
+    );
   }
 
   @override
@@ -100,7 +144,7 @@ class _HomePageState extends State<HomePage> {
             icon: const Icon(Icons.refresh),
             onPressed: _isLoading ? null : _fetchPlate,
             tooltip: 'Actualizar manualmente',
-          )
+          ),
         ],
       ),
       body: RefreshIndicator(
@@ -124,45 +168,45 @@ class _HomePageState extends State<HomePage> {
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
+                      Icon(
+                        Icons.error_outline,
+                        size: 48,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                       const SizedBox(height: 16),
-                      Text(_error!, style: Theme.of(context).textTheme.bodyLarge, textAlign: TextAlign.center),
+                      Text(
+                        _error!,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                        textAlign: TextAlign.center,
+                      ),
                       const SizedBox(height: 16),
                       FilledButton.icon(
                         onPressed: _fetchPlate,
                         icon: const Icon(Icons.refresh),
                         label: const Text('Reintentar'),
-                      )
+                      ),
                     ],
                   )
                 else if (_plate != null)
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[900] : Colors.white,
+                      // ✅ CORREGIDO: Image.memory no soporta loadingBuilder/errorBuilder
+                      if (_plateResult?.imageBytes != null)
+                        ClipRRect(
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey.shade300, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            )
-                          ],
-                        ),
-                        child: Text(
-                          _plate!,
-                          style: const TextStyle(
-                            fontSize: 48,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'monospace',
-                            letterSpacing: 2,
+                          child: Image.memory(
+                            _plateResult!.imageBytes!,
+                            width: 300,
+                            height: 100,
+                            fit: BoxFit.contain,
+                            gaplessPlayback:
+                                true, // Evita parpadeos al refrescar
                           ),
-                        ),
-                      ),
+                        )
+                      else
+                        _buildTextPlate(), // Fallback a texto estilo matrícula
+
                       const SizedBox(height: 24),
                       Text(
                         'Actualizado: ${_formatDate(_lastUpdated!)}',
@@ -172,17 +216,23 @@ class _HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primaryContainer,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           '⏰ Próxima sync: 16:00',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onPrimaryContainer,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onPrimaryContainer,
+                                fontWeight: FontWeight.w600,
+                              ),
                         ),
                       ),
                     ],
