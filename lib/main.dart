@@ -1,20 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:workmanager/workmanager.dart';
 import 'services/plate_service.dart';
-import 'services/update_scheduler.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Inicializa WorkManager con el callback de fondo
-  Workmanager().initialize(
-    callbackDispatcher,
-    isInDebugMode: true, // 🔍 Cambiar a false cuando publiques
-  );
-
-  // Programa la sync diaria a las 16:00
-  await UpdateScheduler.initialize();
-
+void main() {
   runApp(const DgtPlateApp());
 }
 
@@ -61,7 +48,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _fetchPlate();
+    _fetchPlate(); // Carga automática al abrir la app
   }
 
   Future<void> _fetchPlate() async {
@@ -81,19 +68,17 @@ class _HomePageState extends State<HomePage> {
         });
       }
     } on PlateException catch (e) {
-      if (mounted) {
+      if (mounted)
         setState(() {
           _error = e.message;
           _isLoading = false;
         });
-      }
     } catch (e) {
-      if (mounted) {
+      if (mounted)
         setState(() {
           _error = 'Error inesperado: ${e.toString()}';
           _isLoading = false;
         });
-      }
     }
   }
 
@@ -161,7 +146,7 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       CircularProgressIndicator(),
                       SizedBox(height: 16),
-                      Text('Consultando DGT...'),
+                      Text('Consultando web...'),
                     ],
                   )
                 else if (_error != null)
@@ -191,7 +176,6 @@ class _HomePageState extends State<HomePage> {
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // ✅ CORREGIDO: Image.memory no soporta loadingBuilder/errorBuilder
                       if (_plateResult?.imageBytes != null)
                         ClipRRect(
                           borderRadius: BorderRadius.circular(16),
@@ -200,13 +184,11 @@ class _HomePageState extends State<HomePage> {
                             width: 300,
                             height: 100,
                             fit: BoxFit.contain,
-                            gaplessPlayback:
-                                true, // Evita parpadeos al refrescar
+                            gaplessPlayback: true,
                           ),
                         )
                       else
-                        _buildTextPlate(), // Fallback a texto estilo matrícula
-
+                        _buildTextPlate(),
                       const SizedBox(height: 24),
                       Text(
                         'Actualizado: ${_formatDate(_lastUpdated!)}',
@@ -225,7 +207,7 @@ class _HomePageState extends State<HomePage> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          '⏰ Próxima sync: 16:00',
+                          '🔄 Carga al abrir o refrescar',
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(
                                 color: Theme.of(
