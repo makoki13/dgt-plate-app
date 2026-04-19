@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'services/plate_service.dart';
+import 'screens/splash_screen.dart'; // Añade este import
 
 void main() {
   runApp(const DgtPlateApp());
@@ -25,7 +26,7 @@ class DgtPlateApp extends StatelessWidget {
         ),
       ),
       themeMode: ThemeMode.system,
-      home: const HomePage(),
+      home: const SplashScreen(), // ✅ Cambiado de HomePage a SplashScreen
     );
   }
 }
@@ -68,17 +69,19 @@ class _HomePageState extends State<HomePage> {
         });
       }
     } on PlateException catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _error = e.message;
           _isLoading = false;
         });
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _error = 'Error inesperado: ${e.toString()}';
           _isLoading = false;
         });
+      }
     }
   }
 

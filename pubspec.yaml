@@ -40,7 +40,8 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_launcher_icons: ^0.14.1  # Última versión estable
+  flutter_launcher_icons: ^0.14.1
+  flutter_native_splash: ^2.4.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -98,3 +99,9 @@ flutter_launcher_icons:
   # Opcional: Icono adaptativo de Android (recomendado para API 26+)
   adaptive_icon_background: "#FFFFFF"  # Color sólido o ruta a imagen: "assets/icon/background.png"
   adaptive_icon_foreground: "assets/icon/icon.png"
+
+flutter_native_splash:
+  color: "#FFFFFF"  # Color de fondo (cámbialo si usas tema oscuro)
+  image: assets/icon/icon.png
+  android: true
+  ios: false
